@@ -2,7 +2,6 @@
 
 [![Built for Rootstock](https://img.shields.io/badge/Network-Rootstock-orange)](https://rootstock.io)
 [![Solidity 0.8.28](https://img.shields.io/badge/Solidity-0.8.28-blue)](https://docs.soliditylang.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
 
