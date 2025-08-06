@@ -1,28 +1,59 @@
-# RSK AMM Demo
+# Roostock AMM Demo
 
-This project is a simple Automated Market Maker (AMM) DEX built for the Rootstock (RSK) blockchain. It lets you swap ERC20 tokens, provide liquidity, and experiment with trading fees, all via smart contracts.
+[![Built for Rootstock](https://img.shields.io/badge/Network-Rootstock-orange)](https://rootstock.io)
+[![Solidity 0.8.28](https://img.shields.io/badge/Solidity-0.8.28-blue)](https://docs.soliditylang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Features
 
-- **Liquidity Pools:** Add or remove liquidity for any ERC20 token pair.
-- **Token Swaps:** Trade tokens using the constant product (x*y=k) formula.
-- **Governance:** Adjust trading fees via an owner-controlled contract.
-- **Test Tokens:** Deploy and use your own ERC20 tokens for local testing.
 
-## Getting Started
+This project is a simple Automated Market Maker (AMM) DEX built for the Rootstock blockchain. It lets you swap ERC20 tokens, provide liquidity, and experiment with trading fees, all via smart contracts.
 
-### 1. Clone the Repo
+
+## 📦 Contracts
+
+| Contract | Purpose |
+|----------|---------|
+| `Governance.sol` | Manages protocol fees (owner-controlled) |
+| `LiquidityPool.sol` | Core AMM logic with auto-LP token minting |
+| `LPToken.sol` | ERC20 receipts for liquidity providers |
+| `Swap.sol` | User-friendly swapping interface |
+| `TestToken.sol` | Mock ERC20 tokens for testing |
+
+
+### Prerequisites
+- Node.js v18+
+- Hardhat 
+- Foundry 
+- Git
+
+##  🚀 Quickstart
+### **1. Clone & Install**
 
 ```bash
-git clone https://github.com/yourusername/rsk-amm-demo.git
+git clone https://github.com/entuziaz/rsk-amm-demo.git
 cd rsk-amm-demo
-```
 
-### 2. Install Dependencies
+# Install Foundry (if not installed)
+curl -L https://foundry.paradigm.xyz | bash && foundryup
 
-```bash
+# Install Node dependencies
 npm install
 ```
+
+### **2. Configure Environment**
+
+Create `.env`:
+```
+# .env
+PRIVATE_KEY="0xYourTestnetKey"
+RSK_TESTNET_RPC="https://public-node.testnet.rsk.co" 
+```
+
+### 2. Run Tests(Foundry)
+```bash
+forge test -vvv
+```
+
 
 ### 3. Compile Contracts
 
@@ -36,27 +67,28 @@ npx hardhat compile
 npx hardhat test
 ```
 
-### 5. Deploy Locally
-
-Start a local Hardhat node:
-
-```bash
-npx hardhat node
-```
+### 5. Deploy to Testnet
 
 In a new terminal, deploy the contracts:
 
 ```bash
-npx hardhat run scripts/deploy.js --network localhost
+npx hardhat run scripts/deploy.js --network rsk_testnet
 ```
 
-## Usage
-- **Add Liquidity:** Call addLiquidity on the LiquidityPool contract.
-- **Swap Tokens:** Use the Swap contract to trade between tokens.
-- **Adjust Fees:** As the contract owner, call setTradingFee on Governance.
+Verify deployed contracts:
 
-You can interact with the contracts using Hardhat tasks, scripts, or your favorite frontend.
+```bash
+npx hardhat verify --network rsk_testnet 0xYourContractAddress
+```
 
-## Learn More
-- [Rootstock Docs](https://dev.rootstock.io/)
-- [Hardhat Docs](https://hardhat.org/hardhat-runner/docs/getting-started)
+The deployed contracts will be available on the [Rootstock Testnet Explorer](https://explorer.testnet.rootstock.io/).
+
+
+## **📚 Learn More**
+- [Rootstock Documentation](https://developers.rsk.co/)  
+- [Hardhat Tutorial](https://hardhat.org/tutorial/)  
+
+
+### **For Non-Technical Users**
+> "This system lets you create token swap pools like Uniswap. Developers can deploy it, while end-users trade tokens via the Swap contract."
+
