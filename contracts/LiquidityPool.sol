@@ -29,17 +29,19 @@ contract LiquidityPool is ReentrancyGuard {
     event SwapExecuted(address indexed user, address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
 
     constructor(address _governance, address _feeTo) {
+        require(_governance != address(0), "Zero governance address");
         governance = Governance(_governance);
         feeTo = _feeTo;
     }
 
+    
     function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint256 amountADesired,
-        uint256 amountBDesired,
-        uint256 amountAMin,
-        uint256 amountBMin
+    address tokenA,
+    address tokenB,
+    uint256 amountADesired,
+    uint256 amountBDesired,
+    uint256 amountAMin,
+    uint256 amountBMin
     ) external nonReentrant returns (uint256 liquidity) {
         require(tokenA != tokenB, "Identical tokens");
         (address token0, address token1) = sortTokens(tokenA, tokenB);
@@ -51,14 +53,33 @@ contract LiquidityPool is ReentrancyGuard {
             pool.lpToken = new LPToken(name, symbolStr);
         }
 
-        uint256 amount0 = tokenA == token0 ? amountADesired : amountBDesired;
-        uint256 amount1 = tokenA == token0 ? amountBDesired : amountADesired;
-
-        _mintFee(pool);
+        uint256 amount0;
+        uint256 amount1;
 
         if (pool.totalLiquidity == 0) {
+            // First deposit - use desired amounts directly
+            amount0 = tokenA == token0 ? amountADesired : amountBDesired;
+            amount1 = tokenA == token0 ? amountBDesired : amountADesired;
             liquidity = Math.sqrt(amount0 * amount1);
         } else {
+            // Calculate optimal amounts based on current pool ratio
+            uint256 amount0Desired = tokenA == token0 ? amountADesired : amountBDesired;
+            uint256 amount1Desired = tokenA == token0 ? amountBDesired : amountADesired;
+            
+            // Calculate how much of token1 should be deposited based on token0 amount
+            uint256 amount1Optimal = (amount0Desired * pool.reserveB) / pool.reserveA;
+            
+            if (amount1Optimal <= amount1Desired) {
+                // Use all of token0 and optimal amount of token1
+                amount0 = amount0Desired;
+                amount1 = amount1Optimal;
+            } else {
+                // Calculate how much of token0 should be deposited based on token1 amount
+                uint256 amount0Optimal = (amount1Desired * pool.reserveA) / pool.reserveB;
+                amount0 = amount0Optimal;
+                amount1 = amount1Desired;
+            }
+            
             liquidity = Math.min(
                 (amount0 * pool.totalLiquidity) / pool.reserveA,
                 (amount1 * pool.totalLiquidity) / pool.reserveB
@@ -80,6 +101,7 @@ contract LiquidityPool is ReentrancyGuard {
 
         emit Deposit(msg.sender, token0, token1, amount0, amount1, liquidity);
     }
+    
 
     function removeLiquidity(
         address tokenA,
@@ -90,6 +112,8 @@ contract LiquidityPool is ReentrancyGuard {
     ) external nonReentrant returns (uint256 amount0, uint256 amount1) {
         (address token0, address token1) = sortTokens(tokenA, tokenB);
         Pool storage pool = pools[token0][token1];
+
+        require(pool.lpToken.balanceOf(msg.sender) >= liquidity, "Insufficient LP tokens");
 
         uint256 total = pool.totalLiquidity;
         require(total > 0, "No liquidity");
@@ -113,10 +137,10 @@ contract LiquidityPool is ReentrancyGuard {
     }
 
     function swapTokens(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountIn,
-        uint256 minAmountOut
+    address tokenIn,
+    address tokenOut,
+    uint256 amountIn,
+    uint256 minAmountOut
     ) external nonReentrant {
         require(tokenIn != tokenOut, "Same token");
         (address token0, address token1) = sortTokens(tokenIn, tokenOut);
@@ -124,13 +148,21 @@ contract LiquidityPool is ReentrancyGuard {
 
         uint256 fee = governance.calculateFee(amountIn);
         uint256 netAmountIn = amountIn - fee;
-
+        
         IERC20(tokenIn).safeTransferFrom(msg.sender, address(this), amountIn);
+
+        // Transfer fee to feeTo address if fee exists 
+        if (fee > 0 && feeTo != address(0)) {
+            IERC20(tokenIn).safeTransfer(feeTo, fee);
+        }
 
         uint256 reserveIn = tokenIn == token0 ? pool.reserveA : pool.reserveB;
         uint256 reserveOut = tokenIn == token0 ? pool.reserveB : pool.reserveA;
 
+        // actual output amount
         uint256 amountOut = (netAmountIn * reserveOut) / (reserveIn + netAmountIn);
+        
+        // using minAmountOut as slippage protection 
         require(amountOut >= minAmountOut, "Slippage too high");
 
         if (tokenIn == token0) {
@@ -141,31 +173,12 @@ contract LiquidityPool is ReentrancyGuard {
             pool.reserveA -= amountOut;
         }
 
-        _mintFee(pool);
         pool.kLast = pool.reserveA * pool.reserveB;
 
         IERC20(tokenOut).safeTransfer(msg.sender, amountOut);
         emit SwapExecuted(msg.sender, tokenIn, tokenOut, amountIn, amountOut);
     }
 
-
-    function _mintFee(Pool storage pool) private {
-        if (feeTo == address(0)) return;
-        if (pool.kLast == 0) return;
-
-        uint256 rootK = Math.sqrt(pool.reserveA * pool.reserveB);
-        uint256 rootKLast = Math.sqrt(pool.kLast);
-        if (rootK <= rootKLast) return;
-
-        uint256 numerator = pool.totalLiquidity * (rootK - rootKLast);
-        uint256 denominator = rootK * 5 + rootKLast;
-        uint256 feeLiquidity = numerator / denominator;
-
-        if (feeLiquidity > 0) {
-            pool.lpToken.mint(feeTo, feeLiquidity);
-            pool.totalLiquidity += feeLiquidity;
-        }
-    }
 
     function sortTokens(address tokenA, address tokenB) internal pure returns (address token0, address token1) {
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
