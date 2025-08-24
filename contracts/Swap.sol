@@ -9,7 +9,7 @@ interface IGovernance {
 }
 
 interface ILiquidityPool {
-    function swapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut) external;
+    function swapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 minAmountOut) external;
     function getReserves(address tokenA, address tokenB) external view returns (uint256, uint256);
 }
 
@@ -44,7 +44,7 @@ contract Swap {
         uint256 amountOut = (netIn * reserveOut) / (reserveIn + netIn);
         require(amountOut >= minAmountOut, "Slippage too high");
 
-        liquidityPool.swapTokens(tokenIn, tokenOut, amountIn, amountOut);
+        liquidityPool.swapTokens(tokenIn, tokenOut, amountIn, minAmountOut);
         IERC20(tokenOut).safeTransfer(msg.sender, amountOut);
     }
 }
